@@ -1,5 +1,7 @@
 import java.io.*;
 import java.net.*;
+import java.lang.Math;
+import java.util.Arrays;
 
 public class DataReceiver {
     public static void main(String[] args) throws IOException {
@@ -17,21 +19,17 @@ public class DataReceiver {
 
         try (
                 Socket echoSocket = new Socket(hostName, portNumber);
-                PrintWriter out =
-                        new PrintWriter(echoSocket.getOutputStream(), true);
                 DataOutputStream output = new DataOutputStream(echoSocket.getOutputStream());
-                BufferedReader in =
-                        new BufferedReader(
-                                new InputStreamReader(echoSocket.getInputStream()));
-                BufferedReader stdIn =
-                        new BufferedReader(
-                                new InputStreamReader(System.in))
+                ObjectInputStream ois = new ObjectInputStream(echoSocket.getInputStream());
         ) {
 
-            String userInput;
-            PrintStream packet;
-            while (in.readLine() != null){
-                System.out.println(in.readLine());
+            int[] array = (int[])ois.readObject();
+            long beg, delta;
+            while (true){
+                beg = System.currentTimeMillis();
+                ois.readObject();
+                delta = System.currentTimeMillis() - beg;
+                System.out.println("Input rate = " + delta);
             }
         } catch (UnknownHostException e) {
             System.err.println("Don't know about host " + hostName);
@@ -40,6 +38,10 @@ public class DataReceiver {
             System.err.println("Couldn't get I/O for the connection to " +
                     hostName);
             System.exit(1);
+        } catch (ClassNotFoundException e){
+            System.err.println("Class not found ");
+            System.exit(1);
+
         }
     }
 }
