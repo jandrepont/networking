@@ -18,9 +18,9 @@ public class DataReceiver {
 
 
         try (
-                Socket echoSocket = new Socket(hostName, portNumber);
-                DataOutputStream output = new DataOutputStream(echoSocket.getOutputStream());
-                ObjectInputStream ois = new ObjectInputStream(echoSocket.getInputStream());
+            Socket echoSocket = new Socket(hostName, portNumber);
+            DataOutputStream output = new DataOutputStream(echoSocket.getOutputStream());
+            ObjectInputStream ois = new ObjectInputStream(echoSocket.getInputStream());
         ) {
 
             int[] array = (int[])ois.readObject();

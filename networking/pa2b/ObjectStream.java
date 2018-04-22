@@ -15,7 +15,7 @@ public class ObjectStream {
             InetAddress address = InetAddress.getByName(receiverIP);
             ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1000);
             ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-//            oos.flush();
+            oos.flush();
             oos.writeObject(object);
             oos.flush();
 
@@ -45,6 +45,7 @@ public class ObjectStream {
             DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
             dgram.receive(packet);
             port = packet.getPort();
+
 
             /*
              * handle with bytestream and make object using ois

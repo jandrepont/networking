@@ -1,0 +1,11 @@
+to compile:
+    javac DVCoordinator.java DVSender.java DVReceiver.java DV.java
+    javac DVNode.java DVSender.java DVReceiver.java DV.java
+
+when running DVCoordinator requires the following
+    java pa2.DVCoordinator <port> <# of nodes>
+
+for DVNode
+    java pa2.DVNode <IP of DVC> <port> <# of nodes> 
+
+

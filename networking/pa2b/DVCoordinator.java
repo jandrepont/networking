@@ -8,10 +8,12 @@ import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
-import java.io.Serializable;
 public class DVCoordinator extends Thread {
 
-//    DV dv = new DV();
+    static class DV {
+        int node_num;
+        int[] dv;
+    }
     static int nodes, serverPort;
     static DV[] distVectors;
     static String[][] adjList;
@@ -55,7 +57,6 @@ public class DVCoordinator extends Thread {
     public static void initDistVect() {
 
         distVectors = new DV[nodes];
-        System.out.println(distVectors.length);
 //        DV dv = new DV();
         int sourceNode = 0, destNode = 0, distance = 0, substLen = 0;
         substLen = 0;
@@ -67,9 +68,8 @@ public class DVCoordinator extends Thread {
             for(int j = 0; j < nodes; j++){
                 distVectors[i].dv[j] = inf;
             }
-//            System.out.println(Arrays.toString(distVectors[i].dv));
         }
-        distVectors[0].node_num = 10;
+
         for (sourceNode = 0; sourceNode < nodes; sourceNode++) {
 
             distVectors[sourceNode].node_num = sourceNode;
@@ -87,7 +87,6 @@ public class DVCoordinator extends Thread {
             System.out.println(distVectors[sourceNode].node_num + " " + Arrays.toString(distVectors[sourceNode].dv));
 
         }
-
     }
 
     static public HashMap<Integer, String> neighborIp(int currentNode){
@@ -97,22 +96,27 @@ public class DVCoordinator extends Thread {
                 neighborIPTable.put(i, nodeIPtable.get(i));
             }
         }
+//        System.out.println()
         return neighborIPTable;
     }
+
 
 
     public static void main(String args[]) {
 
         int currentNode;
+//        nodes = Integer.parseInt(args[0]);
+//        serverPort = Integer.parseInt(args[1]);
         currentNode = 0;
 
-        try {
+        try{
             nodes = Integer.parseInt(args[0]);
             serverPort = Integer.parseInt(args[1]);
-        } catch (ArrayIndexOutOfBoundsException e) {
+        } catch (ArrayIndexOutOfBoundsException e){
             e.printStackTrace();
             System.out.println("Caused by not including arguments.\nEnsure program is run as java pa2.DVCoordinator <# of nodes> <server port#>");
         }
+
         nodeIPtable = new HashMap<>();
         parseAdjFile("pa2/adjacencyList.txt");
         try {
@@ -131,15 +135,14 @@ public class DVCoordinator extends Thread {
             DatagramSocket server = new DatagramSocket(null);
             InetSocketAddress address = new InetSocketAddress(ip, serverPort);
             server.bind(address);
-            DVSender dvs = new DVSender();
-            DVReceiver dvr = new DVReceiver();
+            ObjectStream stream = new ObjectStream();
 
             while(currentNode < nodes)
             {
                 /*
                  * Receive Datagram
                  */
-                String nodeIP = (String)dvr.receiveObj(server);
+                String nodeIP = (String)stream.receiveObj(server);
 
                 /*
                  * store in hashmap and check for redundencies
@@ -152,9 +155,9 @@ public class DVCoordinator extends Thread {
                     for (Object key: nodeIPtable.entrySet()) {
                         Map.Entry entry = (Map.Entry) key;
                         if(entry.getValue().equals(nodeIP)){
-                            int port = dvr.port;
+                            int port = stream.port;
                             System.out.println(port);
-                            dvs.sendObj(entry.getKey(), nodeIP, port, server);
+                            stream.sendObj(entry.getKey(), nodeIP, port, server);
                         }
                     }
                 } else {
@@ -162,9 +165,9 @@ public class DVCoordinator extends Thread {
                     /*
                      * Get credentials to send datagram to currentNode
                      */
-                    int port = dvr.port;
+                    int port = stream.port;
                     System.out.printf("RECEIVED: %s from node: %d w/ port = %d\n", nodeIP, currentNode, port);
-                    dvs.sendObj(currentNode, nodeIP, port, server);
+                    stream.sendObj(currentNode, nodeIP, port, server);
                     currentNode++;
                 }
             }
@@ -179,8 +182,10 @@ public class DVCoordinator extends Thread {
             while(currentNode < nodes){
                 temp = neighborIp(currentNode);
                 System.out.println(temp.toString());
-                dvs.sendObj(temp, nodeIPtable.get(currentNode), serverPort, server);
-                dvs.sendObj(distVectors[currentNode], nodeIPtable.get(currentNode), serverPort, server);
+                stream.sendObj(temp, nodeIPtable.get(currentNode), serverPort, server);
+//                Thread.sleep((10000));
+                stream.sendObj(distVectors[currentNode].node_num, nodeIPtable.get(currentNode), serverPort, server);
+                stream.sendObj(distVectors[currentNode].dv, nodeIPtable.get(currentNode), serverPort, server);
                 currentNode++;
             }
 
