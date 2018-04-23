@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
 import java.io.Serializable;
+import java.util.List;
+import java.util.ArrayList;
 public class DVCoordinator extends Thread {
 
 //    DV dv = new DV();
@@ -17,83 +19,125 @@ public class DVCoordinator extends Thread {
     static String[][] adjList;
     private static final int inf = Integer.MAX_VALUE;
     static HashMap<Integer, String> nodeIPtable;
+    static HashMap<Integer, String> best_path = new HashMap<>();
+    static List<Map<Integer, String>> listOfMaps = new ArrayList<Map<Integer, String>>();
+    private static final int NO_PARENT = -1;
 
 
-
-    // A utility function to find the vertex with minimum distance value,
-    // from the set of vertices not yet included in shortest path tree
-    static final int V=nodes;
-    static int minDistance(int dist[], Boolean sptSet[])
+    // Shortest path Dijkstra
+    private static void dijkstra(int[][] adjacencyMatrix, int startVertex)
     {
-        // Initialize min value
-        int min = Integer.MAX_VALUE, min_index=-1;
+        int nVertices = adjacencyMatrix[0].length;
 
-        for (int v = 0; v < V; v++)
-            if (sptSet[v] == false && dist[v] <= min)
+        // shortestDistances[i] will hold the
+        // shortest distance from src to i
+        int[] shortestDistances = new int[nVertices];
+
+        // added[i] will true if vertex i is
+        // included / in shortest path tree
+        // or shortest distance from src to
+        // i is finalized
+        boolean[] added = new boolean[nVertices];
+
+        // Initialize all distances as
+        // INFINITE and added[] as false
+        for (int vertexIndex = 0; vertexIndex < nVertices;
+                                            vertexIndex++)
+        {
+            shortestDistances[vertexIndex] = Integer.MAX_VALUE;
+            added[vertexIndex] = false;
+        }
+
+        // Distance of source vertex from
+        // itself is always 0
+        shortestDistances[startVertex] = 0;
+
+        // Parent array to store shortest
+        // path tree
+        int[] parents = new int[nVertices];
+
+        // The starting vertex does not
+        // have a parent
+        parents[startVertex] = NO_PARENT;
+
+        // Find shortest path for all
+        // vertices
+        for (int i = 1; i < nVertices; i++)
+        {
+
+            // Pick the minimum distance vertex
+            // from the set of vertices not yet
+            // processed. nearestVertex is
+            // always equal to startNode in
+            // first iteration.
+            int nearestVertex = -1;
+            int shortestDistance = Integer.MAX_VALUE;
+            for (int vertexIndex = 0;
+                     vertexIndex < nVertices;
+                     vertexIndex++)
             {
-                min = dist[v];
-                min_index = v;
+                if (!added[vertexIndex] &&
+                    shortestDistances[vertexIndex] <
+                    shortestDistance)
+                {
+                    nearestVertex = vertexIndex;
+                    shortestDistance = shortestDistances[vertexIndex];
+                }
             }
 
-        return min_index;
-    }
+            // Mark the picked vertex as
+            // processed
+            added[nearestVertex] = true;
 
-    // A utility function to print the constructed distance array
-    static void printSolution(int dist[], int n)
-    {
-        System.out.println("Vertex   Distance from Source");
-        for (int i = 0; i < V; i++)
-            System.out.println(i+" tt "+dist[i]);
-    }
-
-    // Funtion that implements Dijkstra's single source shortest path
-    // algorithm for a graph represented using adjacency matrix
-    // representation
-    static void dijkstra(int graph[][], int src)
-    {
-        int dist[] = new int[V]; // The output array. dist[i] will hold
-                                 // the shortest distance from src to i
-
-        // sptSet[i] will true if vertex i is included in shortest
-        // path tree or shortest distance from src to i is finalized
-        Boolean sptSet[] = new Boolean[V];
-
-        // Initialize all distances as INFINITE and stpSet[] as false
-        for (int i = 0; i < V; i++)
-        {
-            dist[i] = Integer.MAX_VALUE;
-            sptSet[i] = false;
-        }
-
-        // Distance of source vertex from itself is always 0
-        dist[src] = 0;
-
-        // Find shortest path for all vertices
-        for (int count = 0; count < V-1; count++)
-        {
-            // Pick the minimum distance vertex from the set of vertices
-            // not yet processed. u is always equal to src in first
-            // iteration.
-            int u = minDistance(dist, sptSet);
-
-            // Mark the picked vertex as processed
-            sptSet[u] = true;
-
-            // Update dist value of the adjacent vertices of the
+            // Update dist value of the
+            // adjacent vertices of the
             // picked vertex.
-            for (int v = 0; v < V; v++)
+            for (int vertexIndex = 0;
+                     vertexIndex < nVertices;
+                     vertexIndex++)
+            {
+                int edgeDistance = adjacencyMatrix[nearestVertex][vertexIndex];
 
-                // Update dist[v] only if is not in sptSet, there is an
-                // edge from u to v, and total weight of path from src to
-                // v through u is smaller than current value of dist[v]
-                if (!sptSet[v] && graph[u][v]!=0 &&
-                        dist[u] != Integer.MAX_VALUE &&
-                        dist[u]+graph[u][v] < dist[v])
-                    dist[v] = dist[u] + graph[u][v];
+                if (edgeDistance > 0
+                    && ((shortestDistance + edgeDistance) <
+                        shortestDistances[vertexIndex]))
+                {
+                    parents[vertexIndex] = nearestVertex;
+                    shortestDistances[vertexIndex] = shortestDistance +
+                                                       edgeDistance;
+                }
+            }
         }
 
-        // print the constructed distance array
-        printSolution(dist, V);
+        get_path(startVertex, shortestDistances, parents);
+    }
+
+    private static void get_path(int startVertex, int[] distances, int[] parents)
+    {
+        int nVertices = distances.length;
+        String path="";
+        for (int vertexIndex = 0; vertexIndex < nVertices; vertexIndex++)
+        {
+            if (vertexIndex != startVertex)
+            {
+                best_path.put(vertexIndex, Integer.toString(parents[vertexIndex]));
+                path = getLink(startVertex, vertexIndex, parents);
+                best_path.put(vertexIndex, path);
+            }
+            path = "";
+        }
+        listOfMaps.add(startVertex, best_path);
+        best_path = new HashMap<>();
+    }
+
+
+    private static String getLink(int src, int currentVertex, int[] parents){
+        String path="";// = Integer.toString(currentVertex);
+        while(currentVertex!=src){
+            path += " "+Integer.toString(currentVertex);
+            currentVertex = parents[currentVertex];
+        }
+        return path.substring(path.length() - 1);
     }
 
     public static void parseAdjFile(String filename){
@@ -129,7 +173,7 @@ public class DVCoordinator extends Thread {
     public static void initDistVect() {
 
         distVectors = new DV[nodes];
-        System.out.println(distVectors.length);
+        // System.out.println(distVectors.length);
 //        DV dv = new DV();
         int sourceNode = 0, destNode = 0, distance = 0, substLen = 0;
         substLen = 0;
@@ -139,10 +183,10 @@ public class DVCoordinator extends Thread {
             distVectors[i] = new DV();
             distVectors[i].dv = new int[nodes];
             for(int j = 0; j < nodes; j++){
-                distVectors[i].dv[j] = inf;
+                distVectors[i].dv[j] = inf/2;
             }
         }
-        distVectors[0].node_num = 10;
+        // distVectors[0].node_num = 10;
         for (sourceNode = 0; sourceNode < nodes; sourceNode++) {
 
             distVectors[sourceNode].node_num = sourceNode;
@@ -166,7 +210,7 @@ public class DVCoordinator extends Thread {
     static public HashMap<Integer, String> neighborIp(int currentNode){
         HashMap<Integer, String> neighborIPTable = new HashMap<>();
         for(int i = 0; i < nodes; i++){
-            if ((distVectors[currentNode].dv[i] < inf) && (distVectors[currentNode].dv[i] > 0)){
+            if ((distVectors[currentNode].dv[i] < inf/3) && (distVectors[currentNode].dv[i] > 0)){
                 neighborIPTable.put(i, nodeIPtable.get(i));
             }
         }
@@ -188,6 +232,7 @@ public class DVCoordinator extends Thread {
         }
         nodeIPtable = new HashMap<>();
         parseAdjFile("pa2/adjacencyList.txt");
+
         try {
              /*
              * Get external IP
@@ -200,7 +245,6 @@ public class DVCoordinator extends Thread {
             /*
              * Set up UDP
              */
-
             DatagramSocket server = new DatagramSocket(null);
             InetSocketAddress address = new InetSocketAddress(ip, serverPort);
             server.bind(address);
@@ -241,28 +285,37 @@ public class DVCoordinator extends Thread {
                     currentNode++;
                 }
             }
-
-
             /*
              * Init distVector, neighborIPtable and send corresponding dv to each DVNode
              */
             currentNode=0;
             initDistVect();
+            int array[][] = new int[nodes][nodes];
+            for(int i = 0; i < nodes; i++){
+                // for(int j = 0; j < nodes; j++){
+                //     array[i][j] = distVectors[i].dv[j];
+                // }
+                array[i] = distVectors[i].dv;
+                // System.out.println(Arrays.toString(array[i]));
+            }
+            for(int i = 0; i < nodes; i++){
+                dijkstra(array, i);
+            }
             HashMap<Integer, String> temp = new HashMap<>();
             while(currentNode < nodes){
                 temp = neighborIp(currentNode);
-                // System.out.println(temp.toString());
+                System.out.printf("temp = %s\n",temp.toString());
+                //send neighborIptable
                 dvs.sendObj(temp, nodeIPtable.get(currentNode), serverPort, server);
+                //send distvector
                 dvs.sendObj(distVectors[currentNode], nodeIPtable.get(currentNode), serverPort, server);
+                //send initial forward table
+                dvs.sendObj(listOfMaps.get(currentNode), nodeIPtable.get(currentNode), serverPort, server);
                 currentNode++;
             }
-            System.out.println(nodeIPtable.toString());
+            // System.out.println(nodeIPtable.toString());
+            server.close();
 
-            int array[][] = new int[5][];
-            for(DV deevee: distVectors){
-                array[i] = deevee.dv;
-            }
-            dijkstra(gp, 0);
 
         } catch (IOException e) {
             e.printStackTrace();
