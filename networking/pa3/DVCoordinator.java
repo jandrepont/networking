@@ -242,6 +242,7 @@ public class DVCoordinator extends Thread {
                     whatismyip.openStream()));
             String ip = in.readLine();
             System.out.println(ip);
+
             /*
              * Set up UDP
              */

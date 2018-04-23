@@ -21,8 +21,8 @@ class DVNode extends Thread {
     /*
      * Class vars for multicastSocket
      */
-    static InetAddress multiIP;
-    static int multiPort = 11188;
+    static InetAddress multiIPout, multiIPin;
+    static int multiPort;
     static MulticastSocket multiOutSoc = null;
     static MulticastSocket multiInSoc = null;
 
@@ -36,7 +36,7 @@ class DVNode extends Thread {
     /*
      * This method sets up the DV object and UDP with all neighbords and IPtable
      */
-    public static void init_UDP(String r_host, int r_port){
+    public static void init_DV_data(String r_host, int r_port){
         // String host = "";
         // int port = 0;
         String host = r_host;
@@ -74,7 +74,7 @@ class DVNode extends Thread {
              * Receive HashMap<Integer, String> neighborIp()
              */
             Object obj = (Object) dvr.receiveObj(clientSocket);
-            System.out.printf("Object = %s",obj.toString());
+            System.out.printf("Object = %s\n",obj.toString());
             neighborIPTable = (HashMap<Integer, String>) obj;
             for (Integer i : neighborIPTable.keySet()) ;
             for (String s : neighborIPTable.values()) ;
@@ -93,7 +93,7 @@ class DVNode extends Thread {
             HashMap<Integer,String> ftable = (HashMap<Integer, String>) obj;
             for (Integer i : ftable.keySet());
             for (String s : ftable.values());
-            fwnode = new FWNode(11111, neighborIPTable.size(),ftable);
+            fwnode = new FWNode(11188, neighborIPTable.size(),ftable);
             clientSocket.close();
 
         } catch (MalformedURLException e) {
@@ -102,66 +102,84 @@ class DVNode extends Thread {
             System.out.println("Problem with server connecting");
             e.printStackTrace();
         }
+    }
 
+    public static void init_UDP(String r_host, int port){
         /*
          * Set up MultiCast (UDP)
          *
          */
         try {
-            int multiPort = 11188;
+            multiPort = port;
             multiOutSoc = new MulticastSocket(multiPort);
             multiInSoc = new MulticastSocket(multiPort);
-            String changeIP;
+            String multiOut, multiIn;
             if (node < 10) {
-                changeIP = "230.111.0.00" + Integer.toString(node);
+                multiOut = "230.111.0.00" + Integer.toString(node);
+                multiIn = "230.111.7.00" + Integer.toString(node);
 //                System.out.println(changeIP);
             } else {
-                changeIP = "230.111.0.0" + Integer.toString(node);
+                multiOut = "230.111.0.0" + Integer.toString(node);
+                multiIn = "230.111.7.00" + Integer.toString(node);
 //                System.out.println(changeIP);
             }
-            multiIP = InetAddress.getByName(changeIP);
-            multiInSoc.joinGroup(multiIP);
-            multiOutSoc.joinGroup(multiIP);
-            //now need to form the list of new neighbor IPs
+
+            //set up class variable groupIPs
+            multiIPout = InetAddress.getByName(multiOut);
+            multiIPin = InetAddress.getByName(multiIn);
+
+            //Out connects to itself?
+            // multiOutSoc.joinGroup(multiIPout);
+
             for (Integer key : neighborIPTable.keySet()) {
                 // System.out.printf("Key = %d\n", key);
                 String neighbor = neighborIPTable.get(key);
-                String multiOut, multiIn;
+                // String multiOut, multiIn;
                 if (key < 10) {
                     multiOut = "230.111.0.00" + Integer.toString(key);
-                    multiIn = "230.111.7.00" + Integer.toString(key);
+                    // multiIn = "230.111.7.00" + Integer.toString(key);
                 } else {
                     multiOut = "230.111.0.0" + Integer.toString(key);
-                    multiIn = "230.111.7.0" + Integer.toString(key);
+                    // multiIn = "230.111.7.0" + Integer.toString(key);
                 }
 
-                InetAddress groupIn = InetAddress.getByName(multiIn);
-                multiInSoc.joinGroup(groupIn);
-                InetAddress groupOut = InetAddress.getByName(multiOut);
-                multiOutSoc.joinGroup(groupOut);
+                InetAddress output = InetAddress.getByName(multiOut);
+                multiInSoc.joinGroup(output);
+                // InetAddress groupOut = InetAddress.getByName(multiIP);
+                // multiOutSoc.joinGroup(groupOut);
+            }
+        } catch(IOException e){
+            e.printStackTrace();
+        }
+        /**
+         * Now try to send out datagrams of DV to all neighbors
+         */
+        try{
+            /*
+             * set up buffer for send
+             */
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1000);
+            ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(byteStream));
+            oos.writeObject(dv);
+            oos.flush();
 
-                /*
-                 * set up buffer for send
-                 */
-                ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1000);
-                ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-                oos.writeObject(dv);
-                oos.flush();
+
+            /*
+             * write stream to outbuff
+             */
+            byte[] outbuff = byteStream.toByteArray();
+            DatagramPacket outpacket = new DatagramPacket(outbuff, outbuff.length, multiIPout, multiPort);
+            multiOutSoc.send(outpacket);
+            oos.close();
 
 
-                /*
-                 * write stream to outbuff
-                 */
-                byte[] outbuff = byteStream.toByteArray();
-                DatagramPacket outpacket = new DatagramPacket(outbuff, outbuff.length, groupOut, multiPort);
-                multiOutSoc.send(outpacket);
-                oos.close();
 
+            for (Integer key : neighborIPTable.keySet()) {
                 /*
                  * Receive binary packet and convert using ois
                  */
                 byte[] inbuff = new byte[1000];
-                DatagramPacket inpacket = new DatagramPacket(inbuff, inbuff.length, groupIn, multiPort);
+                DatagramPacket inpacket = new DatagramPacket(inbuff, inbuff.length, multiIPin, multiPort);
                 multiInSoc.receive(inpacket);
 
                 /*
@@ -170,8 +188,8 @@ class DVNode extends Thread {
                 ByteArrayInputStream inbyteStream = new ByteArrayInputStream(inbuff);
                 ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(inbyteStream));
                 dv = (DV) ois.readObject();
+                System.out.printf("Node #: %d Received %s from node#: %d in Multicast\n", node, Arrays.toString(dv.dv), dv.node_num);
                 ois.close();
-                // System.out.printf("Node #: %d Received %s from node#: %d in Multicast\n", node, Arrays.toString(dv.dv), dv.node_num);
             }
         } catch(IOException e){
             e.printStackTrace();
@@ -185,7 +203,7 @@ class DVNode extends Thread {
         PortUser[] p_usr = new PortUser[neighborIPTable.size()];
         int ind = 0;
         for (Integer key : neighborIPTable.keySet()){
-            p_usr[ind] = new PortUser(key, neighborIPTable.get(key), 11111);
+            p_usr[ind] = new PortUser(key, neighborIPTable.get(key), multiPort);
             ++ind;
         }
         System.out.println(Arrays.toString(p_usr));
@@ -209,27 +227,26 @@ class DVNode extends Thread {
         // HashMap<Integer, String> neighborIPTable = new HashMap<>();
         DV dv = new DV();
         dv.dv = new int[n_nodes];
-        init_UDP(host, port);
-        String msg = "Hello";
 
         /**
-         * Test and see if the multisockets are blocking?
+         * initializes data structs DV and neighborIPTable
+         *
          */
-        try{
-            multiInSoc.leaveGroup(multiIP);
-            multiOutSoc.leaveGroup(multiIP);
-            multiInSoc.close();
-            multiOutSoc.close();
-        } catch(IOException e){
-            System.out.println("Error exiting group UDP");
-        }
+        init_DV_data(host, port);
+
+        /**
+         * creates udp connections from neighborIPTable
+         */
+        multiPort = 11188;
+        init_UDP(host, multiPort);
+        String msg = "Hello";
 
         /**
          * Let us suppose node 0 wants to send to node 6 through TCP
          * Need to foward the package for path 0->3->2->5->6
          * This will be done using fwnode and the fw_table
          */
-        // FWN_init();
+
         /**
          * Now have FWNode with receiver and ports. need to initialize
          */
@@ -250,6 +267,7 @@ class DVNode extends Thread {
                     }
                 }
             }
+        }
             // if(listen == 1){
             //     if(node == 1){
             //         fwnode.dp_init();
@@ -342,7 +360,7 @@ class DVNode extends Thread {
             //         }
             //     }
 
-        }
+        // }
         // for (Integer key : neighborIPTable.keySet()) {
         //     System.out.printf("Key = %d, w/ entry = %s\n", key, neighborIPTable.get(key));
         //     try{

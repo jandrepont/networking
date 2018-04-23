@@ -64,7 +64,7 @@ public class DataPlanePort implements Runnable, Callback {
 	}
 
 	public void run() {
-		// initialize();
+		initialize();
 		for (int j = 0; j < nNeighbor; j++) {
 			listners[j].start();
 		}

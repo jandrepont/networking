@@ -1,5 +1,4 @@
 package pa3;
-
 import java.nio.ByteBuffer;
 
 public class MessageType {
