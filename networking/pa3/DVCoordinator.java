@@ -22,6 +22,7 @@ public class DVCoordinator extends Thread {
     static HashMap<Integer, String> best_path = new HashMap<>();
     static List<Map<Integer, String>> listOfMaps = new ArrayList<Map<Integer, String>>();
     private static final int NO_PARENT = -1;
+    DatagramSocket server;
 
 
     // Shortest path Dijkstra
@@ -29,8 +30,6 @@ public class DVCoordinator extends Thread {
     {
         int nVertices = adjacencyMatrix[0].length;
 
-        // shortestDistances[i] will hold the
-        // shortest distance from src to i
         int[] shortestDistances = new int[nVertices];
 
         // added[i] will true if vertex i is
@@ -48,16 +47,9 @@ public class DVCoordinator extends Thread {
             added[vertexIndex] = false;
         }
 
-        // Distance of source vertex from
-        // itself is always 0
+
         shortestDistances[startVertex] = 0;
-
-        // Parent array to store shortest
-        // path tree
         int[] parents = new int[nVertices];
-
-        // The starting vertex does not
-        // have a parent
         parents[startVertex] = NO_PARENT;
 
         // Find shortest path for all
@@ -66,11 +58,6 @@ public class DVCoordinator extends Thread {
         {
 
             // Pick the minimum distance vertex
-            // from the set of vertices not yet
-            // processed. nearestVertex is
-            // always equal to startNode in
-            // first iteration.
-            int nearestVertex = -1;
             int shortestDistance = Integer.MAX_VALUE;
             for (int vertexIndex = 0;
                      vertexIndex < nVertices;
@@ -85,13 +72,10 @@ public class DVCoordinator extends Thread {
                 }
             }
 
-            // Mark the picked vertex as
-            // processed
+            // Mark processed
             added[nearestVertex] = true;
 
-            // Update dist value of the
-            // adjacent vertices of the
-            // picked vertex.
+            // Update dist value
             for (int vertexIndex = 0;
                      vertexIndex < nVertices;
                      vertexIndex++)
@@ -217,6 +201,15 @@ public class DVCoordinator extends Thread {
         return neighborIPTable;
     }
 
+    public static void pump(){
+        int source_node = 3;
+        int dest_node = rand() % nodes;
+        byte[] pack = new byte[1024];
+        Arrays.fill(pack, (byte)10);
+        MessageType message = new MessageType(source, dest, pack);
+        dvs.sendObj(temp, nodeIPtable.get(source), serverPort, server);
+
+    }
 
     public static void main(String args[]) {
 
@@ -246,8 +239,9 @@ public class DVCoordinator extends Thread {
             /*
              * Set up UDP
              */
-            DatagramSocket server = new DatagramSocket(null);
+            server = new DatagramSocket(null);
             InetSocketAddress address = new InetSocketAddress(ip, serverPort);
+            // server.connect(address);
             server.bind(address);
             DVSender dvs = new DVSender();
             DVReceiver dvr = new DVReceiver();
@@ -305,7 +299,7 @@ public class DVCoordinator extends Thread {
             HashMap<Integer, String> temp = new HashMap<>();
             while(currentNode < nodes){
                 temp = neighborIp(currentNode);
-                System.out.printf("temp = %s\n",temp.toString());
+                System.out.printf("listOfMaps = %s\n",listOfMaps.get(currentNode).get(0));
                 //send neighborIptable
                 dvs.sendObj(temp, nodeIPtable.get(currentNode), serverPort, server);
                 //send distvector
@@ -321,6 +315,12 @@ public class DVCoordinator extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("Problem with server connecting");
+        }
+        While(true){
+            Thread.sleep(5000);
+            System.out.printf("DVCoordinator Pump\n");
+            pump();
+
         }
 
     }

@@ -11,11 +11,13 @@ public class DataPlanePort implements Runnable, Callback {
 	DataOutputStream[] outs ;
 	Listner[] listners;
 	ConcurrentLinkedQueue<MessageType> que;
+    InetAddress myIp;
 	HashMap<Integer, Integer> neighbor2stream; 		// mapping node_num to outStream_num
 
-	public DataPlanePort(int portNum, int networkSize) {
+	public DataPlanePort(int portNum, int networkSize, InetAddress ip) {
 		this.portNum = portNum;
 		this.nNeighbor = networkSize;
+        this.myIp = ip;
 		outs = new DataOutputStream[nNeighbor];
 		listners = new Listner[nNeighbor];
 		que = new ConcurrentLinkedQueue<MessageType>();
@@ -25,17 +27,18 @@ public class DataPlanePort implements Runnable, Callback {
 	public synchronized void initialize() {
 		ServerSocket serverSocket = null;
 		try {
+			// serverSocket = new ServerSocket(portNum, 100, myIp);
 			serverSocket = new ServerSocket();
             URL whatismyip = new URL("http://checkip.amazonaws.com");
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     whatismyip.openStream()));
             String ip = in.readLine();
-            System.out.println(ip);
-            InetSocketAddress address = new InetSocketAddress(ip, portNum);
+            // System.out.println(ip);
+            InetSocketAddress address = new InetSocketAddress(myIp, portNum);
             serverSocket.bind(address);
-            // System.out.println("server soc address:" + serverSocket.getInetAddress());
-            // System.out.println("server local socket soc address:" + serverSocket.getLocalSocketAddress());
-            // System.out.println("server soc port:" + serverSocket.getLocalPort());
+            System.out.println("server soc address:" + serverSocket.getInetAddress());
+            System.out.println("server local socket soc address:" + serverSocket.getLocalSocketAddress());
+            System.out.println("server soc port:" + serverSocket.getLocalPort());
         } catch (IOException ioe) {
         	ioe.printStackTrace();
         }
@@ -43,7 +46,6 @@ public class DataPlanePort implements Runnable, Callback {
 			int nodeNum = -1;
        		try {
 
-                System.out.println("asdfasdfasdf");
 				Socket clientSocket = serverSocket.accept(); 	    // not part of communication
 	            System.out.println("client soc IP:" + clientSocket.getInetAddress());
 	            System.out.println("client soc port:" + clientSocket.getLocalPort());
@@ -52,12 +54,14 @@ public class DataPlanePort implements Runnable, Callback {
 				outs[j] = new DataOutputStream(clientSocket.getOutputStream());
 				DataInputStream in = new DataInputStream(clientSocket.getInputStream());
 				nodeNum = in.readInt();
+                System.out.printf("Test vals in connection for j= %d with node = %d\n", j , nodeNum);
 				neighbor2stream.put(nodeNum, j);
 				listners[j] = new Listner(nodeNum, in, this);
 			} catch (IOException ioe) {
-				System.err.println("Failed in connection for j=" + j + "with " + nodeNum);
+				System.err.printf("Failed in connection for j= %d with node = %d\n", j , nodeNum);
 				ioe.printStackTrace();
-				System.exit(-1);
+                --j;
+				// System.exit(-1);
 			}
  		}
 		System.out.println("Connections are all established.");
@@ -65,9 +69,16 @@ public class DataPlanePort implements Runnable, Callback {
 
 	public void run() {
 		initialize();
+        System.out.printf("Neighbor2Stream = %s\n", neighbor2stream.toString());
 		for (int j = 0; j < nNeighbor; j++) {
 			listners[j].start();
 		}
+        try{
+            receive();
+        } catch (InterruptedException e){
+            System.out.println("Error with receive() in DPP.");
+
+        }
 	}
 
 	public synchronized void callback(MessageType message) {
@@ -101,21 +112,21 @@ public class DataPlanePort implements Runnable, Callback {
 		return que;
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException   {
-		if (args.length != 2)
-			System.out.println("usage: java DataPlanePort port-number number-of-nodes");
-		int portNum = Integer.parseInt(args[0]);
-		int numNode = Integer.parseInt(args[1]);
-		DataPlanePort cp = new DataPlanePort(portNum, numNode);
-		new Thread(cp).start();
-		Thread.sleep(20000);
-		System.out.println("SwitchPort: messages in queue:");
-		Iterator<MessageType> ite = cp.getQue().iterator();
-		while (ite.hasNext()) {
-			System.out.println(ite.next());
-		}
-		System.out.println("Switch Port is done.");
-	}
+	// public static void main(String[] args) throws IOException, InterruptedException   {
+	// 	if (args.length != 2)
+	// 		System.out.println("usage: java DataPlanePort port-number number-of-nodes");
+	// 	int portNum = Integer.parseInt(args[0]);
+	// 	int numNode = Integer.parseInt(args[1]);
+	// 	DataPlanePort cp = new DataPlanePort(portNum, numNode);
+	// 	new Thread(cp).start();
+	// 	Thread.sleep(20000);
+	// 	System.out.println("SwitchPort: messages in queue:");
+	// 	Iterator<MessageType> ite = cp.getQue().iterator();
+	// 	while (ite.hasNext()) {
+	// 		System.out.println(ite.next());
+	// 	}
+	// 	System.out.println("Switch Port is done.");
+	// }
 }
 
 class Listner extends Thread {

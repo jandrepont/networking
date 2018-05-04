@@ -13,10 +13,12 @@ class DVNode extends Thread {
      */
     static int n_nodes;
     static DV dv = new DV();
+    static InetAddress myIp;
     static int node;
     static DVSender dvs = null;//, ostream;
     static DVReceiver dvr = null; //, istream;
     static HashMap<Integer, String> neighborIPTable = new HashMap<>();
+    static DatagramSocket clientSocket;
 
     /*
      * Class vars for multicastSocket
@@ -50,12 +52,15 @@ class DVNode extends Thread {
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     whatismyip.openStream()));
             String ip = in.readLine();
+            System.out.printf("My ip = %s\n", ip);
             in.close();
+            myIp = InetAddress.getByName(ip);
+
 
             /*
              * Send info to DVCoordinator
              */
-            DatagramSocket clientSocket = new DatagramSocket(port);
+            clientSocket = new DatagramSocket(port);
 
             /*
              * Send ip Address
@@ -93,14 +98,17 @@ class DVNode extends Thread {
             HashMap<Integer,String> ftable = (HashMap<Integer, String>) obj;
             for (Integer i : ftable.keySet());
             for (String s : ftable.values());
-            fwnode = new FWNode(11188, neighborIPTable.size(),ftable);
             clientSocket.close();
+            Thread.sleep(5000);
+            fwnode = new FWNode(12345, neighborIPTable.size(),ftable, myIp, node);
 
         } catch (MalformedURLException e) {
             e.printStackTrace();
         } catch (IOException e) {
             System.out.println("Problem with server connecting");
             e.printStackTrace();
+        } catch(InterruptedException e){
+            System.out.println("ughhh");
         }
     }
 
@@ -199,15 +207,16 @@ class DVNode extends Thread {
     }
 
     public static void ports_init(){
-
-        PortUser[] p_usr = new PortUser[neighborIPTable.size()];
+        HashMap<Integer, PortUser> p_usr = new HashMap<>();
+        // PortUser[] p_usr = new PortUser[neighborIPTable.size()];
         int ind = 0;
         for (Integer key : neighborIPTable.keySet()){
-            p_usr[ind] = new PortUser(key, neighborIPTable.get(key), multiPort);
-            ++ind;
+            System.out.printf("Node = %d, IP = %s, muliPort = %d \n", key, neighborIPTable.get(key), multiPort);
+            p_usr.put(key, new PortUser(node, neighborIPTable.get(key), multiPort));
         }
-        System.out.println(Arrays.toString(p_usr));
         fwnode.set_p_usrs(p_usr);
+        // System.out.printf("fwnode.p_usr[1].nodeId = %d", fwnode.p_usr[1].nodeId);
+        // fwnode.p_usr
 
     }
 
@@ -250,167 +259,87 @@ class DVNode extends Thread {
         /**
          * Now have FWNode with receiver and ports. need to initialize
          */
-        ports_init();
         int index = 0;
-        for(int listen = 0; listen < n_nodes; listen+=index){
-            int attempts = 0;
-            if(listen == 0){
-                if(node == 0){
-                    fwnode.dp_init();
-                }
-                else if(node == 1 || node == 3 || node == 8){
-                    try{
-                        Thread.sleep(2000);
-                        fwnode.p_usr_init();
-                    } catch(InterruptedException e){
-                        System.out.println("ughhh");
-                    }
-                }
+        HashMap<Integer, PortUser> p_usr = new HashMap<>();
+        for (Integer key : neighborIPTable.keySet()){
+            try{
+                Thread.sleep(2000);
+                // System.out.printf("Node = %d, IP = %s, muliPort = %d \n", key, neighborIPTable.get(key), multiPort);
+                System.out.printf("NeighborIP table = %s\n", neighborIPTable.toString());
+                p_usr.put(key, new PortUser(key, neighborIPTable.get(key), 12345));
+            } catch(InterruptedException e){
+                System.out.println("ughhh");
             }
         }
-            // if(listen == 1){
-            //     if(node == 1){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 7){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
+        fwnode.set_p_usrs(p_usr);
+        //Now everyone has port users but they are not connected
 
-            // if(listen == 2){
-            //     if(node == 2){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 3 || node == 5 || node == 7){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
-            // if(listen == 3){
-            //     if(node == 3){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 0 || node == 2 || node == 4){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
-            // if(listen == 4){
-            //     if(node == 4){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 3 || node == 8){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
-            // if(listen == 5){
-            //     if(node == 5){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 6){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
-            // if(listen == 7){
-            //     if(node == 7){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 1 || node == 2){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
-            // }
-            // if(listen == 8){
-            //     if(node == 8){
-            //         fwnode.dp_init();
-            //     }
-            //     else if(node == 0 || node == 4){
-            //         try{
-            //             Thread.sleep(2000);
-            //             fwnode.p_usr_init();
-            //         } catch(InterruptedException e){
-            //             System.out.println("ughhh");
-            //         }
-            //     }
+        for(int key = 0; key < n_nodes; key++){
+            if(node == key){
+                fwnode.dp_init();
+            }
+            if(neighborIPTable.containsKey(key)){
+                fwnode.p_usr_init(key);
+            }
+        }
 
-        // }
-        // for (Integer key : neighborIPTable.keySet()) {
-        //     System.out.printf("Key = %d, w/ entry = %s\n", key, neighborIPTable.get(key));
+        try{
+            Thread.sleep(5000);
+
+        } catch(InterruptedException e){
+            e.printStackTrace();
+        }
+        // String hey = "Hello from 3";
+        // fwnode.printConnections();
+        if(node == 3){
+            try{
+                Thread.sleep(20000);
+                byte[] pack = new byte[1024];
+        		Arrays.fill(pack, (byte)10);
+                System.out.print("\nSENDING MESSAGE\n");
+                MessageType message = new MessageType(3, 4, pack);
+                fwnode.sendNeighbor(message);
+                Thread.sleep(10000);
+                pack = new byte[1024];
+                Arrays.fill(pack, (byte)10);
+                System.out.print("\nSENDING MESSAGE\n");
+                message = new MessageType(3, 6, pack);
+                fwnode.sendNeighbor(message);
+                Thread.sleep(10000);
+                pack = new byte[1024];
+                Arrays.fill(pack, (byte)10);
+                message = new MessageType(3, 0, pack);
+                System.out.print("\nSENDING MESSAGE\n");
+                fwnode.sendNeighbor(message);
+            } catch(InterruptedException e){
+                System.out.print("Error in sleep from DVNode at sendNeighbor\n");
+            }
+
+        }
+
+            while(true){
+                MessageType message;
+                message = fwnode.receive();
+                System.out.printf("Node %d received message from node %d\n", node, message.getSourceNode());
+                fwnode.sendNeighbor(message); 
+            }
+
+
         //     try{
+        //         Thread.sleep(10000);
+        //         System.out.print("\nSENDING MESSAGE\n");
         //
-        //         /*
-        //          * set up buffer for send
-        //          */
-        //         InetAddress group = InetAddress.getByName("230.111.0.00" + Integer.toString(key));
-        //         ByteArrayOutputStream byteStream = new ByteArrayOutputStream(1000);
-        //         ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(byteStream));
-        //         oos.writeObject(msg);
-        //         oos.flush();
-        //
-        //
-        //         /*
-        //          * write outbuff to stream
-        //          */
-        //         byte[] outbuff = byteStream.toByteArray();
-        //         DatagramPacket hi = new DatagramPacket(outbuff, outbuff.length, group, 11188);
-        //         multiOutSoc.send(hi);
-        //         oos.close();
-        //
-        //         // get their responses!
-        //         byte[] buf = new byte[1000];
-        //         DatagramPacket recv = new DatagramPacket(buf, buf.length);
-        //         multiInSoc.receive(recv);
-        //
-        //         ByteArrayInputStream inbyteStream = new ByteArrayInputStream(buf);
-        //         ObjectInputStream ois = new ObjectInputStream(new BufferedInputStream(inbyteStream));
-        //         Object pls = (Object) ois.readObject();
-        //         ois.close();
-        //         System.out.println(pls);
-        //
-        //     } catch(IOException e){
-        //         e.printStackTrace();
-        //     } catch(ClassNotFoundException e){
-        //         e.printStackTrace();
+        //         // for (Integer node_id : neighborIPTable.keySet()){
+        //         MessageType message = new MessageType(0, 3, hey.getBytes());
+        //         fwnode.sendNeighbor(message);
+        //     } catch(InterruptedException e){
+        //         System.out.print("Error in sleep from DVNode at sendNeighbor\n");
         //     }
-
-
-        // try{
-        //     multiInSoc.leaveGroup(multiIP);
-        //     multiOutSoc.leaveGroup(multiIP);
-        //     multiInSoc.close();
-        //     multiOutSoc.close();
-        // } catch(IOException e){
-        //     System.out.println("Error exiting group UDP");
+        //
+        //     }
         // }
-
+        // if(null!=neighborIPTable.get(0)){
+        //     // fwnode.receive();
         // }
-
     }
 }

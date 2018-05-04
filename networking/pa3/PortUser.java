@@ -29,12 +29,17 @@ public class PortUser {
 	            System.out.println("client remote soc port:" + soc.getRemoteSocketAddress());
 				in = new DataInputStream(soc.getInputStream());
 				out = new DataOutputStream(soc.getOutputStream());
+
+                System.out.printf("Port user nodeId = %d\n", nodeId);
 				out.writeInt(nodeId);
+
 			} catch (UnknownHostException e) {
 				System.err.println("Don't know about the server.");
 			} catch (IOException e) {
-                System.out.printf("ip = %s, port = %d", ip, port);
+                System.out.printf("ip = %s, port = %d\n", ip, port);
 				System.err.println("Couldn't get I/O for the connection to server.");
+                soc = null;
+                // initialize();
 			}
 			Thread.sleep(1000);
 		}
@@ -52,6 +57,7 @@ public class PortUser {
 		try {
 			out.write(packet);
 		} catch (SocketException se) {
+            System.out.printf("ERROR in send from portUser\n");
 			System.exit(1);
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
@@ -70,28 +76,28 @@ public class PortUser {
 		}
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException {
-		if (args.length != 3)
-			System.out.println("usage: java PortUser server-ip server-port node-ID");
-		int nodeId = Integer.parseInt(args[2]);
-		String ip = args[0];
-		int port = Integer.parseInt(args[1]);
-		PortUser pu = new PortUser(nodeId, ip, port);
-		pu.initialize();
-		System.out.println("before sending");
-		Thread.sleep(10000);
-		byte[] pack = new byte[1024];
-		MessageType msg = new MessageType(nodeId, 8, pack);
-		for (int j = 0; j < 5; j++) {
-			Arrays.fill(pack, (byte)j);
-			System.out.println("sending: " + msg);
-			try {
-				pu.send(msg);
-				Thread.sleep(1000);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
- 		pu.close();
-	}
+	// public static void main(String[] args) throws IOException, InterruptedException {
+		// if (args.length != 3)
+		// 	System.out.println("usage: java PortUser server-ip server-port node-ID");
+		// int nodeId = Integer.parseInt(args[2]);
+		// String ip = args[0];
+		// int port = Integer.parseInt(args[1]);
+		// PortUser pu = new PortUser(nodeId, ip, port);
+		// pu.initialize();
+		// System.out.println("before sending");
+		// Thread.sleep(10000);
+		// byte[] pack = new byte[1024];
+		// MessageType msg = new MessageType(nodeId, 8, pack);
+		// for (int j = 0; j < 5; j++) {
+		// 	Arrays.fill(pack, (byte)j);
+		// 	System.out.println("sending: " + msg);
+		// 	try {
+		// 		pu.send(msg);
+		// 		Thread.sleep(1000);
+		// 	} catch (Exception e) {
+	// 			e.printStackTrace();
+	// 		}
+	// 	}
+ 	// 	pu.close();
+	// }
 }
